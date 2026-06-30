@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TalentMatch – Job Board</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0B0F1A; color: #E8EDF5; font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+  input, select, textarea, button { font-family: inherit; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #131929; }
+  ::-webkit-scrollbar-thumb { background: #2E3F60; border-radius: 3px; }
+  option { background: #131929; color: #E8EDF5; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const C = {
+  bg: "#0B0F1A", surface: "#131929", card: "#1A2236", border: "#243050",
+  accent: "#4F8EF7", accentDim: "#1E3A6E", accentGlow: "#4F8EF740",
+  success: "#22C55E", warning: "#F59E0B", danger: "#EF4444",
+  purple: "#A855F7", text: "#E8EDF5", muted: "#7B8DB0", faint: "#2E3F60",
+};
+
+const S = {
+  app: { fontFamily:"'Inter',system-ui,sans-serif", background:C.bg, minHeight:"100vh", color:C.text },
+  nav: { background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"0 32px", display:"flex", alignItems:"center", justifyContent:"space-between", height:64, position:"sticky", top:0, zIndex:100 },
+  logo: { fontSize:22, fontWeight:800, letterSpacing:"-0.5px", color:C.accent, display:"flex", alignItems:"center", gap:8 },
+  navBtn: a => ({ background:a?C.accentDim:"transparent", color:a?C.accent:C.muted, border:"none", borderRadius:8, padding:"8px 16px", cursor:"pointer", fontSize:14, fontWeight:500, transition:"all .2s" }),
+  btn: (v="primary", sz="md") => ({
+    background: v==="primary"?C.accent:v==="danger"?C.danger:v==="success"?C.success:v==="ghost"?"transparent":C.faint,
+    color: v==="ghost"?C.muted:"#fff",
+    border: v==="ghost"?`1px solid ${C.border}`:"none",
+    borderRadius:10, padding:sz==="sm"?"6px 14px":sz==="lg"?"14px 28px":"10px 20px",
+    fontSize:sz==="sm"?13:sz==="lg"?16:14, fontWeight:600, cursor:"pointer", transition:"all .2s",
+  }),
+  card: (h=false) => ({ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:24, transition:"all .2s", cursor:h?"pointer":"default" }),
+  input: { background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px", color:C.text, fontSize:14, width:"100%", outline:"none", boxSizing:"border-box" },
+  label: { fontSize:13, color:C.muted, marginBottom:6, display:"block", fontWeight:500 },
+  badge: c => ({ background:c+"22", color:c, border:`1px solid ${c}44`, borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:600, display:"inline-block" }),
+  tag: { background:C.accentDim, color:C.accent, borderRadius:6, padding:"3px 10px", fontSize:12, fontWeight:500 },
+  page: { maxWidth:1200, margin:"0 auto", padding:"40px 24px" },
+  h1: { fontSize:36, fontWeight:800, letterSpacing:"-1px", marginBottom:8 },
+  h2: { fontSize:24, fontWeight:700, marginBottom:16 },
+  h3: { fontSize:18, fontWeight:600, marginBottom:8 },
+  grid: n => ({ display:"grid", gridTemplateColumns:`repeat(${n},1fr)`, gap:20 }),
+};
+
+const JOBS = [
+  { id:1, title:"Senior React Developer", company:"TechNova", location:"San Francisco, CA", type:"Full-time", salary:"$130k–$160k", skills:["React","TypeScript","Node.js","GraphQL"], match:92, posted:"2 days ago", applicants:34, logo:"TN", color:"#4F8EF7", description:"We're looking for an experienced React developer to lead our frontend team and shape the product architecture.", requirements:["5+ years React","TypeScript expert","GraphQL experience"] },
+  { id:2, title:"Full Stack Engineer", company:"DataFlow AI", location:"Remote", type:"Full-time", salary:"$120k–$150k", skills:["Python","React","PostgreSQL","Docker"], match:87, posted:"1 day ago", applicants:56, logo:"DF", color:"#A855F7", description:"Join our AI team building the next generation of data infrastructure at massive scale.", requirements:["Python proficiency","React basics","SQL knowledge"] },
+  { id:3, title:"Backend Node.js Engineer", company:"CloudScale", location:"Austin, TX", type:"Hybrid", salary:"$110k–$140k", skills:["Node.js","Express","MongoDB","AWS"], match:78, posted:"3 days ago", applicants:28, logo:"CS", color:"#22C55E", description:"Build scalable microservices for our cloud platform serving 10M+ users.", requirements:["Node.js 3+ years","AWS certified","Microservices experience"] },
+  { id:4, title:"DevOps Engineer", company:"Nexus Corp", location:"New York, NY", type:"Full-time", salary:"$115k–$145k", skills:["Kubernetes","Docker","CI/CD","Terraform"], match:65, posted:"5 days ago", applicants:19, logo:"NC", color:"#F59E0B", description:"Own our infrastructure and deployment pipelines end-to-end.", requirements:["Kubernetes experience","CI/CD pipelines","Terraform"] },
+  { id:5, title:"Mobile Developer (React Native)", company:"AppWave", location:"Remote", type:"Contract", salary:"$90–$120/hr", skills:["React Native","iOS","Android","Redux"], match:81, posted:"1 week ago", applicants:42, logo:"AW", color:"#EF4444", description:"Build cross-platform mobile apps for millions of users globally.", requirements:["React Native 2+ years","App Store deployment","Redux"] },
+  { id:6, title:"UI/UX + Frontend Dev", company:"DesignHub", location:"Los Angeles, CA", type:"Full-time", salary:"$100k–$130k", skills:["Figma","React","CSS","Accessibility"], match:74, posted:"4 days ago", applicants:61, logo:"DH", color:"#06B6D4", description:"Shape the visual experience of our design platform used by 500k designers.", requirements:["Portfolio required","React experience","WCAG knowledge"] },
+];
+
+const APPLICATIONS = [
+  { id:1, job:"Senior React Developer", company:"TechNova", status:"interviewed", appliedDate:"Jun 10", match:92 },
+  { id:2, job:"Full Stack Engineer", company:"DataFlow AI", status:"reviewed", appliedDate:"Jun 15", match:87 },
+  { id:3, job:"Backend Node.js Engineer", company:"CloudScale", status:"applied", appliedDate:"Jun 20", match:78 },
+  { id:4, job:"Mobile Developer", company:"AppWave", status:"offered", appliedDate:"Jun 5", match:81 },
+];
+
+const CANDIDATES = [
+  { id:1, name:"Alex Johnson", title:"React Developer", skills:["React","TypeScript","Node.js","GraphQL","PostgreSQL"], match:92, experience:"5 years", status:"interviewed", applied:"Jun 10", avatar:"AJ" },
+  { id:2, name:"Priya Sharma", title:"Full Stack Engineer", skills:["React","Python","PostgreSQL","Docker","AWS"], match:88, experience:"4 years", status:"reviewed", applied:"Jun 12", avatar:"PS" },
+  { id:3, name:"Marcus Chen", title:"Frontend Developer", skills:["React","TypeScript","CSS","Vue","Figma"], match:75, experience:"3 years", status:"applied", applied:"Jun 14", avatar:"MC" },
+  { id:4, name:"Sofia Rodriguez", title:"Senior Developer", skills:["Node.js","React","GraphQL","MongoDB","TypeScript"], match:95, experience:"6 years", status:"offered", applied:"Jun 8", avatar:"SR" },
+];
+
+const KANBAN_STAGES = ["applied","reviewed","interviewed","offered"];
+const STAGE_COLORS = { applied:C.muted, reviewed:C.accent, interviewed:C.warning, offered:C.success };
+const STAGE_LABELS = { applied:"Applied", reviewed:"Under Review", interviewed:"Interviewed", offered:"Offer Extended" };
+
+function Avatar({ initials, color=C.accent, size=40 }) {
+  return <div style={{ width:size, height:size, borderRadius:size/2, background:color+"33", border:`2px solid ${color}55`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.35, fontWeight:700, color, flexShrink:0 }}>{initials}</div>;
+}
+
+function MatchBadge({ pct }) {
+  const color = pct>=85?C.success:pct>=70?C.accent:C.warning;
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+      <div style={{ width:48, height:48, borderRadius:24, border:`3px solid ${color}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color }}>{pct}%</div>
+      <div style={{ fontSize:11, color:C.muted, lineHeight:1.4 }}>Match<br/>Score</div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  const colors = { applied:C.muted, reviewed:C.accent, interviewed:C.warning, offered:C.success, rejected:C.danger };
+  return <span style={S.badge(colors[status]||C.muted)}>{STAGE_LABELS[status]||status}</span>;
+}
+
+function Inp({ label, placeholder, value, onChange, type="text" }) {
+  return (
+    <div style={{ marginBottom:16 }}>
+      {label && <label style={S.label}>{label}</label>}
+      <input style={S.input} type={type} placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function Sel({ label, value, onChange, options }) {
+  return (
+    <div style={{ marginBottom:16 }}>
+      {label && <label style={S.label}>{label}</label>}
+      <select style={S.input} value={value} onChange={e=>onChange(e.target.value)}>
+        {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function Modal({ title, children, onClose }) {
+  return (
+    <div style={{ position:"fixed", inset:0, background:"#000b", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }} onClick={onClose}>
+      <div style={{ ...S.card(), maxWidth:640, width:"100%", maxHeight:"85vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <h2 style={{ ...S.h2, marginBottom:0 }}>{title}</h2>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:C.muted, fontSize:28, cursor:"pointer", lineHeight:1 }}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Toast({ msg, type="success" }) {
+  const color = type==="success"?C.success:type==="error"?C.danger:C.accent;
+  return <div style={{ position:"fixed", bottom:24, right:24, background:C.card, border:`1px solid ${color}`, borderLeft:`4px solid ${color}`, borderRadius:10, padding:"14px 20px", color:C.text, fontSize:14, zIndex:9999, boxShadow:"0 8px 32px #000a", maxWidth:320 }}>{msg}</div>;
+}
+
+function ProgressBar({ pct, color=C.accent }) {
+  return (
+    <div style={{ height:8, borderRadius:4, background:C.faint, overflow:"hidden" }}>
+      <div style={{ height:"100%", width:`${pct}%`, background:color, borderRadius:4, transition:"width 1s ease" }} />
+    </div>
+  );
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+function AuthPage({ onLogin }) {
+  const [mode, setMode] = useState("login");
+  const [role, setRole] = useState("candidate");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [err, setErr] = useState("");
+
+  const submit = () => {
+    if (!email || !password) { setErr("Please fill in all fields."); return; }
+    onLogin({ name: name||email.split("@")[0], email, role });
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex" }}>
+      {/* Left */}
+      <div style={{ flex:1, background:`linear-gradient(135deg,${C.accentDim} 0%,#0B0F1A 65%)`, padding:"60px 60px", display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
+        <div style={S.logo}>⚡ TalentMatch</div>
+        <div>
+          <div style={{ fontSize:42, fontWeight:800, lineHeight:1.2, marginBottom:20 }}>
+            Find your perfect<br/><span style={{ color:C.accent }}>career match</span>
+          </div>
+          <p style={{ color:C.muted, fontSize:16, lineHeight:1.8, marginBottom:40 }}>AI-powered job matching connects candidates with their ideal roles using skill-based scoring and intelligent resume parsing.</p>
+          {["92% match accuracy","Resume auto-parsing with NLP","Real-time application tracking","Kanban hiring pipeline"].map(f=>(
+            <div key={f} style={{ display:"flex", gap:12, alignItems:"center", marginBottom:14 }}>
+              <div style={{ width:24, height:24, borderRadius:12, background:C.accentGlow, border:`1px solid ${C.accent}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:C.accent, flexShrink:0 }}>✓</div>
+              <span style={{ color:C.text, fontSize:15 }}>{f}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ color:C.muted, fontSize:13 }}>© 2026 TalentMatch · Internship Project</div>
+      </div>
+
+      {/* Right */}
+      <div style={{ width:480, display:"flex", alignItems:"center", justifyContent:"center", padding:48 }}>
+        <div style={{ width:"100%" }}>
+          <h2 style={{ ...S.h2, marginBottom:6 }}>{mode==="login"?"Welcome back":"Create account"}</h2>
+          <p style={{ color:C.muted, marginBottom:28 }}>{mode==="login"?"Sign in to your account":"Join thousands of professionals"}</p>
+
+          <div style={{ display:"flex", gap:8, marginBottom:24, background:C.surface, padding:4, borderRadius:10 }}>
+            {["candidate","employer"].map(r=>(
+              <button key={r} onClick={()=>setRole(r)} style={{ flex:1, padding:"10px", borderRadius:8, border:"none", cursor:"pointer", background:role===r?C.accent:"transparent", color:role===r?"#fff":C.muted, fontWeight:600, fontSize:14, transition:"all .2s" }}>
+                {r==="candidate"?"👤 Job Seeker":"🏢 Employer"}
+              </button>
+            ))}
+          </div>
+
+          {mode==="signup" && <Inp label="Full Name" placeholder="Alex Johnson" value={name} onChange={setName} />}
+          <Inp label="Email" placeholder="you@company.com" value={email} onChange={v=>{setEmail(v);setErr("");}} type="email" />
+          <Inp label="Password" placeholder="••••••••" value={password} onChange={v=>{setPassword(v);setErr("");}} type="password" />
+
+          {mode==="login" && <div style={{ textAlign:"right", marginBottom:16 }}><span style={{ color:C.accent, fontSize:13, cursor:"pointer" }}>Forgot password?</span></div>}
+
+          {err && <div style={{ background:C.danger+"22", border:`1px solid ${C.danger}`, borderRadius:8, padding:"10px 14px", color:C.danger, fontSize:13, marginBottom:16 }}>{err}</div>}
+
+          <button onClick={submit} style={{ ...S.btn("primary","lg"), width:"100%", marginBottom:16 }}>
+            {mode==="login"?"Sign In":"Create Account"}
+          </button>
+
+          <div style={{ textAlign:"center", color:C.muted, fontSize:14 }}>
+            {mode==="login"?"Don't have an account? ":"Already have one? "}
+            <span onClick={()=>setMode(mode==="login"?"signup":"login")} style={{ color:C.accent, cursor:"pointer", fontWeight:600 }}>
+              {mode==="login"?"Sign up":"Sign in"}
+            </span>
+          </div>
+
+          <div style={{ marginTop:32, borderTop:`1px solid ${C.border}`, paddingTop:24 }}>
+            <p style={{ color:C.muted, fontSize:12, marginBottom:12, textAlign:"center" }}>Quick demo — no password needed:</p>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={()=>onLogin({ name:"Alex Johnson", email:"alex@demo.com", role:"candidate" })} style={{ ...S.btn("ghost","sm"), flex:1 }}>Demo Candidate</button>
+              <button onClick={()=>onLogin({ name:"TechNova HR", email:"hr@technova.com", role:"employer" })} style={{ ...S.btn("ghost","sm"), flex:1 }}>Demo Employer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── JOB BOARD ────────────────────────────────────────────────────────────────
+function JobBoardPage({ user, onApply, appliedIds }) {
+  const [search, setSearch] = useState("");
+  const [locF, setLocF] = useState("all");
+  const [sortBy, setSortBy] = useState("match");
+  const [sel, setSel] = useState(null);
+
+  const filtered = JOBS.filter(j => {
+    const s = search.toLowerCase();
+    const ms = j.title.toLowerCase().includes(s)||j.company.toLowerCase().includes(s)||j.skills.some(sk=>sk.toLowerCase().includes(s));
+    const ml = locF==="all"||(locF==="remote"&&j.location==="Remote")||(locF==="onsite"&&j.location!=="Remote");
+    return ms&&ml;
+  }).sort((a,b)=>sortBy==="match"?b.match-a.match:b.applicants-a.applicants);
+
+  return (
+    <div style={S.page}>
+      {/* Hero */}
+      <div style={{ ...S.card(), background:`linear-gradient(135deg,${C.accentDim} 0%,${C.card} 100%)`, marginBottom:32, textAlign:"center", padding:"48px 24px" }}>
+        <h1 style={S.h1}>Find Your <span style={{ color:C.accent }}>Perfect Match</span></h1>
+        <p style={{ color:C.muted, fontSize:16, marginBottom:28 }}>AI-matched positions based on your skills and experience</p>
+        <div style={{ display:"flex", gap:12, maxWidth:560, margin:"0 auto" }}>
+          <input style={{ ...S.input, flex:1, fontSize:15 }} placeholder="🔍  Search jobs, skills, companies..." value={search} onChange={e=>setSearch(e.target.value)} />
+          <button style={S.btn("primary","md")}>Search</button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display:"flex", gap:10, marginBottom:24, flexWrap:"wrap", alignItems:"center" }}>
+        <span style={{ color:C.muted, fontSize:14 }}>Location:</span>
+        {[["all","All"],["remote","Remote"],["onsite","On-site"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setLocF(v)} style={S.btn(locF===v?"primary":"ghost","sm")}>{l}</button>
+        ))}
+        <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center" }}>
+          <span style={{ color:C.muted, fontSize:13 }}>Sort:</span>
+          <select onChange={e=>setSortBy(e.target.value)} style={{ ...S.input, width:"auto", padding:"6px 12px" }}>
+            <option value="match">Best Match</option>
+            <option value="applicants">Most Popular</option>
+          </select>
+        </div>
+      </div>
+
+      <div style={{ color:C.muted, fontSize:13, marginBottom:20 }}>{filtered.length} positions found</div>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+        {filtered.map(job=>(
+          <div key={job.id} onClick={()=>setSel(job)} style={{ ...S.card(true), display:"flex", gap:20, alignItems:"flex-start", borderColor:sel?.id===job.id?C.accent:C.border }}>
+            <Avatar initials={job.logo} color={job.color} size={52} />
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:6 }}>
+                <div>
+                  <h3 style={{ ...S.h3, marginBottom:2 }}>{job.title}</h3>
+                  <span style={{ color:C.muted, fontSize:14 }}>{job.company} · {job.location} · {job.type}</span>
+                </div>
+                <MatchBadge pct={job.match} />
+              </div>
+              <div style={{ color:C.accent, fontWeight:600, fontSize:15, marginBottom:10 }}>{job.salary}</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
+                {job.skills.map(s=><span key={s} style={S.tag}>{s}</span>)}
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span style={{ color:C.muted, fontSize:12 }}>Posted {job.posted} · {job.applicants} applicants</span>
+                <button onClick={e=>{ e.stopPropagation(); onApply(job); }} style={{ ...S.btn(appliedIds.includes(job.id)?"ghost":"primary","sm"), opacity:appliedIds.includes(job.id)?0.6:1 }}>
+                  {appliedIds.includes(job.id)?"✓ Applied":"Quick Apply"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {sel && (
+        <Modal title={sel.title} onClose={()=>setSel(null)}>
+          <div style={{ display:"flex", gap:16, alignItems:"center", marginBottom:20 }}>
+            <Avatar initials={sel.logo} color={sel.color} size={56} />
+            <div>
+              <div style={{ fontWeight:700, fontSize:18 }}>{sel.company}</div>
+              <div style={{ color:C.muted }}>{sel.location} · {sel.type}</div>
+              <div style={{ color:C.accent, fontWeight:700, marginTop:4 }}>{sel.salary}</div>
+            </div>
+            <div style={{ marginLeft:"auto" }}><MatchBadge pct={sel.match} /></div>
+          </div>
+          <p style={{ color:C.muted, lineHeight:1.7, marginBottom:20 }}>{sel.description}</p>
+          <div style={{ marginBottom:20 }}>
+            <div style={S.label}>Required Skills</div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{sel.skills.map(s=><span key={s} style={S.tag}>{s}</span>)}</div>
+          </div>
+          <div style={{ marginBottom:24 }}>
+            <div style={S.label}>Requirements</div>
+            {sel.requirements.map(r=><div key={r} style={{ color:C.text, fontSize:14, marginBottom:6 }}>• {r}</div>)}
+          </div>
+          <div style={{ display:"flex", gap:12 }}>
+            <button onClick={()=>{ onApply(sel); setSel(null); }} style={{ ...S.btn("primary","lg"), flex:1 }} disabled={appliedIds.includes(sel.id)}>
+              {appliedIds.includes(sel.id)?"✓ Already Applied":"Apply Now"}
+            </button>
+            <button style={S.btn("ghost","lg")}>Save Job</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── CANDIDATE DASHBOARD ───────────────────────────────────────────────────────
+function CandidateDashboard({ user }) {
+  const [apps] = useState(APPLICATIONS);
+  const [resumeUploaded, setResumeUploaded] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const skills = ["React","TypeScript","Node.js","GraphQL","PostgreSQL","Docker","AWS"];
+
+  const handleUpload = () => {
+    setParsing(true);
+    setTimeout(()=>{ setParsing(false); setResumeUploaded(true); }, 2000);
+  };
+
+  const stats = [
+    { label:"Total Applied", value:apps.length, color:C.accent, icon:"📋" },
+    { label:"Under Review", value:apps.filter(a=>a.status==="reviewed").length, color:C.purple, icon:"🔍" },
+    { label:"Interviews", value:apps.filter(a=>a.status==="interviewed").length, color:C.warning, icon:"🎯" },
+    { label:"Offers", value:apps.filter(a=>a.status==="offered").length, color:C.success, icon:"🎉" },
+  ];
+
+  return (
+    <div style={S.page}>
+      <div style={{ marginBottom:32 }}>
+        <h1 style={{ ...S.h1, fontSize:28 }}>Welcome back, {user.name} 👋</h1>
+        <p style={{ color:C.muted }}>Here's your job search overview</p>
+      </div>
+
+      <div style={{ ...S.grid(4), marginBottom:32 }}>
+        {stats.map(s=>(
+          <div key={s.label} style={S.card()}>
+            <div style={{ fontSize:28 }}>{s.icon}</div>
+            <div style={{ fontSize:36, fontWeight:800, color:s.color, margin:"8px 0 4px" }}>{s.value}</div>
+            <div style={{ color:C.muted, fontSize:13 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:24 }}>
+        <div>
+          <div style={{ ...S.card(), marginBottom:24 }}>
+            <h2 style={S.h2}>Application Pipeline</h2>
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {apps.map(app=>(
+                <div key={app.id} style={{ display:"flex", alignItems:"center", gap:16, padding:16, background:C.surface, borderRadius:10, border:`1px solid ${C.border}` }}>
+                  <div style={{ width:40, height:40, borderRadius:10, background:C.accentDim, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:C.accent }}>{app.company[0]}</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:600, fontSize:15 }}>{app.job}</div>
+                    <div style={{ color:C.muted, fontSize:13 }}>{app.company} · Applied {app.appliedDate}</div>
+                  </div>
+                  <div style={{ textAlign:"right" }}>
+                    <StatusBadge status={app.status} />
+                    <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>{app.match}% match</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+          <div style={S.card()}>
+            <h3 style={S.h3}>Resume Parser</h3>
+            {!resumeUploaded ? (
+              <div>
+                <div style={{ border:`2px dashed ${C.border}`, borderRadius:10, padding:24, textAlign:"center", marginBottom:12 }}>
+                  <div style={{ fontSize:32, marginBottom:8 }}>📄</div>
+                  <div style={{ color:C.muted, fontSize:13, marginBottom:12 }}>Upload PDF or DOCX</div>
+                  <button onClick={handleUpload} style={S.btn("primary","sm")}>{parsing?"Parsing…":"Upload Resume"}</button>
+                </div>
+                {parsing && <div style={{ color:C.accent, fontSize:13, textAlign:"center", marginTop:8 }}>⚙️ NLP extracting skills…</div>}
+              </div>
+            ) : (
+              <div>
+                <div style={{ background:C.success+"22", border:`1px solid ${C.success}`, borderRadius:10, padding:16, marginBottom:16 }}>
+                  <div style={{ color:C.success, fontWeight:600, fontSize:14 }}>✓ Resume parsed successfully</div>
+                  <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>7 skills extracted · 5 yrs experience</div>
+                </div>
+                <button onClick={()=>setResumeUploaded(false)} style={{ ...S.btn("ghost","sm"), width:"100%" }}>Re-upload</button>
+              </div>
+            )}
+          </div>
+
+          <div style={S.card()}>
+            <h3 style={S.h3}>Your Skills</h3>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{skills.map(s=><span key={s} style={S.tag}>{s}</span>)}</div>
+            <button style={{ ...S.btn("ghost","sm"), marginTop:12, width:"100%" }}>+ Add Skill</button>
+          </div>
+
+          <div style={S.card()}>
+            <h3 style={S.h3}>Profile Strength</h3>
+            {[["Resume",100],[" Skills",85],["Experience",90],["Education",100]].map(([label,pct])=>(
+              <div key={label} style={{ marginBottom:14 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:6 }}>
+                  <span style={{ color:C.muted }}>{label}</span>
+                  <span style={{ color:pct===100?C.success:C.accent, fontWeight:600 }}>{pct}%</span>
+                </div>
+                <ProgressBar pct={pct} color={pct===100?C.success:C.accent} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── EMPLOYER DASHBOARD ────────────────────────────────────────────────────────
+function EmployerDashboard({ user }) {
+  const [view, setView] = useState("overview");
+  const [candidates, setCandidates] = useState(CANDIDATES);
+  const [showPost, setShowPost] = useState(false);
+  const [newJob, setNewJob] = useState({ title:"", location:"", salary:"", type:"Full-time", skills:"" });
+
+  const moveCandidate = (id, status) => setCandidates(prev=>prev.map(c=>c.id===id?{...c,status}:c));
+
+  const metrics = [
+    { label:"Job Views", value:"1,247", change:"+12%", color:C.accent },
+    { label:"Applications", value:"89", change:"+8%", color:C.purple },
+    { label:"Interviews", value:"14", change:"+23%", color:C.warning },
+    { label:"Time-to-Hire", value:"18 days", change:"-3 days", color:C.success },
+  ];
+
+  return (
+    <div style={S.page}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:32 }}>
+        <div>
+          <h1 style={{ ...S.h1, fontSize:28 }}>Employer Dashboard</h1>
+          <p style={{ color:C.muted }}>Manage your jobs and candidates</p>
+        </div>
+        <button onClick={()=>setShowPost(true)} style={S.btn("primary","lg")}>+ Post a Job</button>
+      </div>
+
+      <div style={{ display:"flex", gap:4, marginBottom:28, background:C.surface, padding:4, borderRadius:10, width:"fit-content" }}>
+        {[["overview","📊 Overview"],["pipeline","🔄 Pipeline"],["analytics","📈 Analytics"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)} style={{ padding:"8px 20px", borderRadius:8, border:"none", cursor:"pointer", background:view===v?C.accent:"transparent", color:view===v?"#fff":C.muted, fontWeight:600, fontSize:14, transition:"all .2s" }}>{l}</button>
+        ))}
+      </div>
+
+      {view==="overview" && (
+        <>
+          <div style={{ ...S.grid(4), marginBottom:28 }}>
+            {metrics.map(m=>(
+              <div key={m.label} style={S.card()}>
+                <div style={{ color:C.muted, fontSize:13, marginBottom:8 }}>{m.label}</div>
+                <div style={{ fontSize:28, fontWeight:800, color:m.color }}>{m.value}</div>
+                <div style={{ color:m.color, fontSize:12, marginTop:4 }}>{m.change} this week</div>
+              </div>
+            ))}
+          </div>
+          <h2 style={S.h2}>Top Candidates</h2>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {[...candidates].sort((a,b)=>b.match-a.match).map(c=>(
+              <div key={c.id} style={{ ...S.card(), display:"flex", alignItems:"center", gap:16 }}>
+                <Avatar initials={c.avatar} size={48} />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:16 }}>{c.name}</div>
+                  <div style={{ color:C.muted, fontSize:13 }}>{c.title} · {c.experience}</div>
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginTop:8 }}>
+                    {c.skills.slice(0,4).map(s=><span key={s} style={S.tag}>{s}</span>)}
+                  </div>
+                </div>
+                <div style={{ marginRight:12 }}><MatchBadge pct={c.match} /></div>
+                <div style={{ textAlign:"right" }}>
+                  <StatusBadge status={c.status} />
+                  <div style={{ marginTop:8, display:"flex", gap:6 }}>
+                    <button style={S.btn("primary","sm")}>View</button>
+                    <button style={S.btn("ghost","sm")}>Schedule</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {view==="pipeline" && (
+        <div>
+          <h2 style={S.h2}>Hiring Pipeline — Kanban</h2>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16 }}>
+            {KANBAN_STAGES.map(stage=>(
+              <div key={stage} style={{ background:C.surface, borderRadius:12, padding:16, minHeight:360 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                  <span style={{ fontWeight:700, fontSize:14, color:STAGE_COLORS[stage] }}>{STAGE_LABELS[stage]}</span>
+                  <span style={{ ...S.badge(STAGE_COLORS[stage]), fontSize:11 }}>{candidates.filter(c=>c.status===stage).length}</span>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {candidates.filter(c=>c.status===stage).map(c=>(
+                    <div key={c.id} style={{ background:C.card, borderRadius:10, padding:12, border:`1px solid ${C.border}` }}>
+                      <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:8 }}>
+                        <Avatar initials={c.avatar} size={32} />
+                        <div>
+                          <div style={{ fontWeight:600, fontSize:13 }}>{c.name}</div>
+                          <div style={{ color:C.muted, fontSize:11 }}>{c.match}% match</div>
+                        </div>
+                      </div>
+                      <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
+                        {c.skills.slice(0,2).map(s=><span key={s} style={{ ...S.tag, fontSize:10, padding:"2px 6px" }}>{s}</span>)}
+                      </div>
+                      <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                        {KANBAN_STAGES.filter(s=>s!==stage).slice(0,2).map(s=>(
+                          <button key={s} onClick={()=>moveCandidate(c.id,s)} style={{ ...S.btn("ghost","sm"), fontSize:10, padding:"3px 8px" }}>→{STAGE_LABELS[s].split(" ")[0]}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view==="analytics" && (
+        <div>
+          <h2 style={S.h2}>Analytics & Insights</h2>
+          <div style={{ ...S.grid(2), marginBottom:24 }}>
+            <div style={S.card()}>
+              <h3 style={S.h3}>Application Funnel</h3>
+              {[["Viewed",1247,C.accent],["Applied",89,C.purple],["Reviewed",45,C.warning],["Interviewed",14,C.success],["Offered",3,"#06B6D4"]].map(([l,v,c])=>(
+                <div key={l} style={{ marginBottom:14 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
+                    <span style={{ color:C.muted }}>{l}</span>
+                    <span style={{ color:c, fontWeight:700 }}>{v.toLocaleString()}</span>
+                  </div>
+                  <ProgressBar pct={v/12.47} color={c} />
+                </div>
+              ))}
+            </div>
+            <div style={S.card()}>
+              <h3 style={S.h3}>Skill Gap Analysis</h3>
+              <p style={{ color:C.muted, fontSize:13, marginBottom:16 }}>Skills most commonly missing</p>
+              {[["GraphQL",72],["TypeScript",58],["Docker",45],["Kubernetes",31]].map(([sk,pct])=>(
+                <div key={sk} style={{ marginBottom:14 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
+                    <span>{sk}</span><span style={{ color:C.danger }}>{pct}% lacking</span>
+                  </div>
+                  <ProgressBar pct={pct} color={C.danger} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={S.card()}>
+            <h3 style={S.h3}>Salary Insights — Market Data</h3>
+            <div style={S.grid(3)}>
+              {[["React Developer","$125k","SF"],["Node.js Engineer","$118k","NYC"],["Full Stack Dev","$132k","Remote"]].map(([role,sal,loc])=>(
+                <div key={role} style={{ background:C.surface, borderRadius:10, padding:16 }}>
+                  <div style={{ fontWeight:600, fontSize:14 }}>{role}</div>
+                  <div style={{ fontSize:24, fontWeight:800, color:C.accent, margin:"8px 0 4px" }}>{sal}</div>
+                  <div style={{ color:C.muted, fontSize:12 }}>avg. in {loc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPost && (
+        <Modal title="Post a New Job" onClose={()=>setShowPost(false)}>
+          <Inp label="Job Title" placeholder="e.g. Senior React Developer" value={newJob.title} onChange={v=>setNewJob({...newJob,title:v})} />
+          <Inp label="Location" placeholder="e.g. Remote or San Francisco, CA" value={newJob.location} onChange={v=>setNewJob({...newJob,location:v})} />
+          <Inp label="Salary Range" placeholder="e.g. $120k–$150k" value={newJob.salary} onChange={v=>setNewJob({...newJob,salary:v})} />
+          <Sel label="Job Type" value={newJob.type} onChange={v=>setNewJob({...newJob,type:v})} options={[{value:"Full-time",label:"Full-time"},{value:"Part-time",label:"Part-time"},{value:"Contract",label:"Contract"},{value:"Hybrid",label:"Hybrid"}]} />
+          <Inp label="Required Skills (comma-separated)" placeholder="React, TypeScript, Node.js" value={newJob.skills} onChange={v=>setNewJob({...newJob,skills:v})} />
+          <div style={{ marginBottom:16 }}>
+            <label style={S.label}>Job Description</label>
+            <textarea style={{ ...S.input, height:100, resize:"vertical" }} placeholder="Describe the role and responsibilities..." />
+          </div>
+          <div style={{ display:"flex", gap:12 }}>
+            <button onClick={()=>setShowPost(false)} style={{ ...S.btn("primary","lg"), flex:1 }}>Post Job</button>
+            <button onClick={()=>setShowPost(false)} style={S.btn("ghost","lg")}>Cancel</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── PROFILE ───────────────────────────────────────────────────────────────────
+function ProfilePage({ user }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(user.name);
+  const [title, setTitle] = useState("Senior React Developer");
+  const [bio, setBio] = useState("Passionate full-stack developer with 5+ years building modern web applications. Expert in React ecosystem and Node.js backends.");
+  const [skills, setSkills] = useState(["React","TypeScript","Node.js","GraphQL","PostgreSQL","Docker","AWS"]);
+  const [newSkill, setNewSkill] = useState("");
+
+  return (
+    <div style={{ ...S.page, maxWidth:900 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:32 }}>
+        <h1 style={{ ...S.h1, fontSize:28 }}>My Profile</h1>
+        <button onClick={()=>setEditing(!editing)} style={S.btn(editing?"success":"ghost","md")}>
+          {editing?"✓ Save Changes":"Edit Profile"}
+        </button>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"280px 1fr", gap:24 }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+          <div style={{ ...S.card(), textAlign:"center" }}>
+            <div style={{ width:80, height:80, borderRadius:40, background:C.accentDim, border:`3px solid ${C.accent}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:800, color:C.accent, margin:"0 auto 16px" }}>{user.name[0]}</div>
+            {editing
+              ? <input style={{ ...S.input, textAlign:"center", fontWeight:700, fontSize:18, marginBottom:8 }} value={name} onChange={e=>setName(e.target.value)} />
+              : <div style={{ fontWeight:700, fontSize:18, marginBottom:4 }}>{name}</div>
+            }
+            <div style={{ color:C.muted, fontSize:13 }}>{user.email}</div>
+            <div style={{ marginTop:8 }}><span style={S.badge(C.accent)}>{user.role==="employer"?"Employer":"Candidate"}</span></div>
+          </div>
+          <div style={S.card()}>
+            <h3 style={S.h3}>Contact</h3>
+            {[["Email",user.email],["Location","San Francisco, CA"],["LinkedIn","linkedin.com/in/alex"]].map(([k,v])=>(
+              <div key={k} style={{ marginBottom:10 }}>
+                <div style={{ color:C.muted, fontSize:11 }}>{k}</div>
+                <div style={{ fontSize:13 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+          <div style={S.card()}>
+            <h3 style={S.h3}>About</h3>
+            {editing ? (
+              <>
+                <Inp label="Job Title" value={title} onChange={setTitle} />
+                <div>
+                  <label style={S.label}>Bio</label>
+                  <textarea style={{ ...S.input, height:100, resize:"vertical" }} value={bio} onChange={e=>setBio(e.target.value)} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontWeight:600, fontSize:16, color:C.accent, marginBottom:10 }}>{title}</div>
+                <p style={{ color:C.muted, lineHeight:1.7, fontSize:14 }}>{bio}</p>
+              </>
+            )}
+          </div>
+
+          <div style={S.card()}>
+            <h3 style={S.h3}>Skills</h3>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:12 }}>
+              {skills.map(s=>(
+                <span key={s} style={{ ...S.tag, cursor:editing?"pointer":"default" }} onClick={()=>editing&&setSkills(skills.filter(sk=>sk!==s))}>
+                  {s}{editing?" ×":""}
+                </span>
+              ))}
+            </div>
+            {editing && (
+              <div style={{ display:"flex", gap:8 }}>
+                <input style={{ ...S.input, flex:1 }} placeholder="Add skill…" value={newSkill} onChange={e=>setNewSkill(e.target.value)} onKeyDown={e=>{ if(e.key==="Enter"&&newSkill){ setSkills([...skills,newSkill]); setNewSkill(""); }}} />
+                <button onClick={()=>{ if(newSkill){ setSkills([...skills,newSkill]); setNewSkill(""); }}} style={S.btn("primary","sm")}>Add</button>
+              </div>
+            )}
+          </div>
+
+          <div style={S.card()}>
+            <h3 style={S.h3}>Experience</h3>
+            {[{role:"Senior Developer",company:"WebCo",period:"2022–Present"},{role:"Frontend Engineer",company:"StartupX",period:"2020–2022"}].map(e=>(
+              <div key={e.company} style={{ marginBottom:16, paddingBottom:16, borderBottom:`1px solid ${C.border}` }}>
+                <div style={{ fontWeight:600 }}>{e.role}</div>
+                <div style={{ color:C.accent, fontSize:14 }}>{e.company}</div>
+                <div style={{ color:C.muted, fontSize:13 }}>{e.period}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ROOT ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [user, setUser] = useState(null);
+  const [page, setPage] = useState("jobs");
+  const [appliedIds, setAppliedIds] = useState([]);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type="success") => {
+    setToast({msg,type});
+    setTimeout(()=>setToast(null), 3000);
+  };
+
+  const handleApply = job => {
+    if(appliedIds.includes(job.id)) return;
+    setAppliedIds(prev=>[...prev,job.id]);
+    showToast(`✓ Applied to ${job.title} at ${job.company}!`);
+  };
+
+  const handleLogin = userData => {
+    setUser(userData);
+    setPage(userData.role==="employer"?"employer":"jobs");
+    showToast(`Welcome, ${userData.name}! 🎉`);
+  };
+
+  const handleLogout = () => { setUser(null); setPage("jobs"); setAppliedIds([]); };
+
+  if(!user) return <><AuthPage onLogin={handleLogin}/>{toast&&<Toast {...toast}/>}</>;
+
+  const navItems = user.role==="employer"
+    ? [["employer","📊 Dashboard"],["profile","👤 Company"]]
+    : [["jobs","🔍 Find Jobs"],["dashboard","📋 My Applications"],["profile","👤 Profile"]];
+
+  return (
+    <div style={S.app}>
+      <nav style={S.nav}>
+        <div style={S.logo}>⚡ TalentMatch</div>
+        <div style={{ display:"flex", gap:8 }}>
+          {navItems.map(([p,l])=>(
+            <button key={p} onClick={()=>setPage(p)} style={S.navBtn(page===p)}>{l}</button>
+          ))}
+        </div>
+        <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+          <Avatar initials={user.name[0]} size={34} />
+          <span style={{ fontSize:14, fontWeight:500 }}>{user.name}</span>
+          <button onClick={handleLogout} style={S.btn("ghost","sm")}>Log out</button>
+        </div>
+      </nav>
+      {page==="jobs" && <JobBoardPage user={user} onApply={handleApply} appliedIds={appliedIds}/>}
+      {page==="dashboard" && <CandidateDashboard user={user}/>}
+      {page==="employer" && <EmployerDashboard user={user}/>}
+      {page==="profile" && <ProfilePage user={user}/>}
+      {toast && <Toast {...toast}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
